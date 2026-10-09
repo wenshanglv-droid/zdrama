@@ -2,6 +2,14 @@
 
 档案基础开发增量 v0.2。Vue 3 / TypeScript / Element Plus + Django REST Framework + PostgreSQL，Docker Compose 部署。
 
+## 全阶段界面评审（先确认界面，再实现功能）
+
+新增独立的 **全功能界面预览**：登录页和工作台均有入口，也可在当前站点地址后打开 `/prototype/`。包含47个页面入口，按需求书V2.0覆盖P0、P1、P2；详情、表单、关键操作及异常状态可体验。
+
+界面使用虚构演示数据，修改只保存在本浏览器；不调用业务API、不上传文件内容、不连接票务或AI服务。原有已实现系统继续从 `/` 使用。先在“界面评审清单”记录意见并导出，再按确认结果实现真实功能。
+
+页面与需求对应、体验顺序及边界详见 [界面评审说明](docs/UI_REVIEW.md)。
+
 ## 在线体验（GitHub Codespaces）
 
 [打开网页试用环境](https://codespaces.new/wenshanglv-droid/zdrama/tree/feat/archive-foundation?quickstart=1)
