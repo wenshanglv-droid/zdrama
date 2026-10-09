@@ -55,13 +55,13 @@ class ArchiveTests(TestCase):
         self.client.force_login(self.external)
         self.assertEqual(self.client.get(url).status_code,404)
         self.assertEqual(self.client.get(url+"content/").status_code,404)
-    def test_expired_and_disabled_recipient(self):
+    def test_expired_share(self):
         token,pk=self.new_share()
         Share.objects.filter(pk=pk).update(expires_at=timezone.now()-timezone.timedelta(seconds=1))
         self.client.force_login(self.external)
         self.assertEqual(self.client.get(f"/api/shared/{token}/").status_code,404)
     def test_inflight_stream_stops_when_share_revoked(self):
-        self.asset.file.save("large.pdf",SimpleUploadedFile("large.pdf",b"x"*200000))
+        self.asset.file.save("large.pdf",SimpleUploadedFile("large.pdf",b"%PDF-"+b"x"*200000))
         token,pk=self.new_share();self.client.force_login(self.external)
         response=self.client.get(f"/api/shared/{token}/content/");iterator=iter(response.streaming_content)
         self.assertEqual(len(next(iterator)),65536)
@@ -93,3 +93,23 @@ class ArchiveTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get("/api/assets/").status_code,403)
         self.assertTrue(Audit.objects.filter(action="upload",actor=self.owner).exists())
+
+    def test_disabled_recipient_cannot_use_existing_session(self):
+        token, _ = self.new_share()
+        self.client.force_login(self.external)
+        self.external.is_active = False
+        self.external.save(update_fields=["is_active"])
+        self.assertEqual(self.client.get(f"/api/shared/{token}/").status_code, 403)
+
+    def test_fake_preview_extension_rejected(self):
+        self.asset.file.save("fake.pdf", SimpleUploadedFile("fake.pdf", b"<html><script>alert(1)</script>"))
+        self.assertEqual(self.client.get(f"/api/assets/{self.asset.pk}/preview/").status_code, 415)
+        token, _ = self.new_share()
+        self.client.force_login(self.external)
+        self.assertEqual(self.client.get(f"/api/shared/{token}/content/").status_code, 415)
+
+    def test_other_staff_cannot_revoke_share(self):
+        _, pk = self.new_share()
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.post(f"/api/shares/{pk}/revoke/", {}).status_code, 404)
+        self.assertIsNone(Share.objects.get(pk=pk).revoked_at)

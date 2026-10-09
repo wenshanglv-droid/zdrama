@@ -65,7 +65,17 @@ npm ci
 npm run build
 ```
 
-后端测试涵盖上传校验、权限隔离、CSRF、分享接收人、过期、下载授权、撤销以及传输中撤销。环境验证记录见 [VALIDATION.md](docs/VALIDATION.md)。
+后端14项测试涵盖上传校验、权限隔离、CSRF、分享接收人、账号禁用、过期、下载授权、撤销、伪造预览文件头以及传输中撤销。环境验证记录见 [VALIDATION.md](docs/VALIDATION.md)。
+
+浏览器完整流程测试（需安装Chromium）：
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+默认使用项目根目录`.venv/bin/python`；可用`E2E_PYTHON`指定其他Python。自动创建独立临时测试数据库，启动后端和Vite，结束后清理。GitHub Actions同时验证PostgreSQL、前端、浏览器和Docker容器；最新结果查看PR #1。
 
 ## 正式部署前
 

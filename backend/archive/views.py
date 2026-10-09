@@ -149,8 +149,14 @@ def shared_content(request, token):
 def deliver(asset, request, download, share=None):
     types = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
     mime = types.get(Path(asset.original_name).suffix.lower())
-    if not download and not mime:
-        return Response({"detail": "此格式暂不支持预览"}, status=415)
+    if not download:
+        if not mime:
+            return Response({"detail": "此格式暂不支持预览"}, status=415)
+        with asset.file.open("rb") as source:
+            prefix = source.read(8)
+        signatures = {"application/pdf": b"%PDF-", "image/jpeg": b"\xff\xd8\xff", "image/png": b"\x89PNG\r\n\x1a\n"}
+        if not prefix.startswith(signatures[mime]):
+            return Response({"detail": "文件内容与扩展名不匹配，已禁止预览"}, status=415)
     def stream():
         with asset.file.open("rb") as source:
             while True:
