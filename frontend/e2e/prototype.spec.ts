@@ -1,0 +1,78 @@
+import {test,expect} from '@playwright/test'
+import {pages} from '../src/prototype/catalog'
+
+test('全阶段界面：所有页面与详情可访问，演示不请求业务API',async({page})=>{
+ test.setTimeout(120000)
+ page.setDefaultTimeout(6000)
+ const errors:string[]=[],apiRequests:string[]=[]
+ page.on('pageerror',e=>errors.push(e.message))
+ page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/'))apiRequests.push(r.url())})
+ await page.goto('/prototype/#dashboard')
+ await expect(page.getByRole('heading',{name:'工作概览',exact:true})).toBeVisible()
+ await page.screenshot({path:'test-results/prototype-dashboard.png',fullPage:true})
+ await page.locator('.el-select').filter({has:page.getByRole('combobox',{name:'演示岗位'})}).click()
+ await page.getByRole('option',{name:'项目负责人',exact:true}).click()
+ for(const item of pages){
+  await page.goto('/prototype/#'+item.id)
+  if(!item.id.startsWith('external-')) await expect(page.getByRole('heading',{name:item.title,exact:true}).first()).toBeVisible()
+  else await expect(page.getByRole('heading',{name:'请先验证接收身份'})).toBeVisible()
+  const detail=page.getByRole('button',{name:'详情',exact:true}).first()
+  if(await detail.count()){
+   await detail.click()
+   const drawer=page.getByRole('dialog',{name:item.title+' · 详情'})
+   await expect(drawer).toBeVisible()
+   for(const tab of item.tabs){await drawer.getByRole('tab',{name:tab,exact:true}).click();await expect(drawer.locator('.detail-panels')).toBeVisible()}
+   await drawer.locator('.el-drawer__close-btn').click()
+   await expect(drawer).not.toBeVisible()
+  }
+ }
+ expect(errors).toEqual([]);expect(apiRequests).toEqual([])
+})
+
+test('演示表单、草稿、评审记录与旧系统入口',async({page})=>{
+ await page.goto('/prototype/#productions')
+ await page.getByRole('button',{name:'新建剧目',exact:true}).click()
+ const form=page.getByRole('dialog',{name:'新建 · 剧目档案'})
+ await form.getByRole('textbox',{name:'名称',exact:true}).fill('界面评审剧目')
+ await form.getByRole('textbox',{name:'负责人',exact:true}).fill('测试负责人')
+ await form.getByRole('button',{name:'保存草稿',exact:true}).click()
+ await form.locator('.el-dialog__headerbtn').click()
+ await page.getByRole('button',{name:'保存草稿并离开',exact:true}).click()
+ await expect(form).not.toBeVisible()
+ await page.getByRole('button',{name:'新建剧目',exact:true}).click()
+ await expect(form.getByRole('textbox',{name:'名称',exact:true})).toHaveValue('界面评审剧目')
+ await form.getByRole('button',{name:'保存演示记录'}).click()
+ await expect(page.getByRole('button').filter({hasText:'界面评审剧目'})).toBeVisible()
+ await page.reload()
+ await expect(page.getByRole('button').filter({hasText:'界面评审剧目'})).toBeVisible()
+ await page.goto('/prototype/#review')
+ const row=page.getByRole('row').filter({hasText:'剧目档案'})
+ await row.getByPlaceholder('记录字段、布局或流程意见').fill('增加封面选择位置')
+ await row.getByPlaceholder('记录字段、布局或流程意见').press('Tab')
+ await page.reload()
+ await expect(row.getByPlaceholder('记录字段、布局或流程意见')).toHaveValue('增加封面选择位置')
+ await page.getByRole('link',{name:'返回已实现系统'}).click()
+ await expect(page.getByRole('heading',{name:'登录档案工作台'})).toBeVisible()
+})
+
+test('外部验证与手机布局，不暴露内部导航',async({page})=>{
+ await page.setViewportSize({width:390,height:844})
+ await page.goto('/prototype/#external-share')
+ await expect(page.locator('.proto-nav')).toHaveCount(0)
+ await expect(page.getByText('精选宣传照片',{exact:true})).toHaveCount(0)
+ await page.getByRole('textbox',{name:'指定接收身份'}).fill('partner@example.com')
+ await page.getByRole('textbox',{name:'验证码',exact:true}).fill('246810')
+ await page.getByRole('button',{name:'验证并继续'}).click()
+ await expect(page.getByRole('heading',{name:'春江月 · 巡演宣传资料'})).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391)
+ await page.screenshot({path:'test-results/prototype-mobile-share.png',fullPage:true})
+ await page.goto('/prototype/#dashboard')
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391)
+ await page.getByRole('button',{name:'打开导航'}).click()
+ await expect(page.locator('.proto-nav')).toHaveClass(/mobile/)
+ await page.locator('.proto-nav').getByRole('button',{name:'资料中心',exact:true}).click()
+ await expect(page.getByRole('heading',{name:'资料中心',exact:true}).first()).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391)
+ await expect.poll(async()=>{const b=await page.locator('.proto-nav').boundingBox();return b?b.x+b.width:0}).toBeLessThanOrEqual(1)
+ await page.screenshot({path:'test-results/prototype-mobile-assets.png',fullPage:true})
+})

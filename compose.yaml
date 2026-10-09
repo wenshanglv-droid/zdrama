@@ -1,0 +1,77 @@
+name: zdrama
+x-backend: &backend
+  build: ./backend
+  environment: &environment
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+    DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+    DB_HOST: db
+    DB_NAME: zdrama
+    DB_USER: zdrama
+    DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    MEDIA_ROOT: /data/media
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: amqp://zdrama:${RABBIT_PASSWORD:?set RABBIT_PASSWORD}@rabbit:5672//
+  volumes:
+    - media:/data
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+    rabbit:
+      condition: service_healthy
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: zdrama
+      POSTGRES_USER: zdrama
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U zdrama -d zdrama"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --save, "", --appendonly, "no"]
+  rabbit:
+    image: rabbitmq:4.1-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: zdrama
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?set RABBIT_PASSWORD}
+    volumes:
+      - rabbit:/var/lib/rabbitmq
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+  migrate:
+    <<: *backend
+    command: [python, manage.py, migrate, --noinput]
+  backend:
+    <<: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+  worker:
+    <<: *backend
+    profiles: [workers]
+    command: [celery, -A, config.celery, worker, --loglevel=info, --concurrency=2]
+  web:
+    build: ./frontend
+    ports:
+      - 127.0.0.1:8080:80
+    depends_on:
+      - backend
+volumes:
+  postgres:
+  media:
+  rabbit:
