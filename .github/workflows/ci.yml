@@ -28,6 +28,7 @@ jobs:
       - run: pip install -r backend/requirements.txt
       - run: python backend/manage.py makemigrations --check --dry-run
       - run: python backend/manage.py test archive
+      - run: python scripts/test_codespaces.py
   frontend:
     runs-on: ubuntu-latest
     steps:

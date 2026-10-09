@@ -16,7 +16,7 @@ def prepare():
     access = STATE / 'access.json'
     if not access.exists():
         data = {key: secrets.token_urlsafe(32) for key in ['admin_password', 'recipient_password', 'secret_key', 'db_password', 'queue_password']}
-        with access.open('x', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
+        with open(access, 'x', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
             json.dump(data, stream)
     data = json.loads(access.read_text())
     name = os.getenv('CODESPACE_NAME')
@@ -30,7 +30,7 @@ def prepare():
         'CSRF_TRUSTED_ORIGINS': data['url']
     }
     envfile = STATE / 'demo.env'
-    with envfile.open('w', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
+    with open(envfile, 'w', opener=lambda p, f: os.open(p, f, 0o600)) as stream:
         stream.write(''.join(f'{key}={value}\n' for key, value in config.items()))
     return data, config
 
