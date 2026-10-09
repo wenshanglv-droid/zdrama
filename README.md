@@ -17,6 +17,16 @@
 
 自动启动失败可运行 `python .devcontainer/start.py` 重试。试用使用独立的 `zdrama-preview` Compose项目、数据卷和随机密钥；不覆盖正常开发的 `.env`，再次启动不重置账号和资料。
 
+### Codespaces提示找不到docker
+
+这表示当前开发容器未加载Docker组件，可能尚未应用配置或创建失败进入恢复模式。
+
+1. 终端运行 `git pull --ff-only` 获取当前开发分支更新。
+2. 按 `Ctrl+Shift+P`，选择 **Codespaces: Rebuild Container**，等待重新构建。
+3. 构建成功后运行 `docker --version` 和 `docker compose version`，两者均应显示版本。
+4. 启动脚本会自动运行；需要重试时执行 `python .devcontainer/start.py`。
+5. 如果重建失败，选择 **Codespaces: View Creation Log**，查看末尾错误。请勿删除Codespace或资料目录。
+
 ## 当前可用
 
 - Session 登录、CSRF 校验、内部/外部账号区分。

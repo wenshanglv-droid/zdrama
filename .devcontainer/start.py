@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
+import sys
 import subprocess
 import time
 import urllib.request
@@ -34,7 +36,21 @@ def prepare():
         stream.write(''.join(f'{key}={value}\n' for key, value in config.items()))
     return data, config
 
+def check_docker():
+    if shutil.which('docker') is None:
+        print('当前开发容器未安装Docker，系统尚未启动。\n'
+              '请先执行 git pull --ff-only，然后按 Ctrl+Shift+P，选择 Codespaces: Rebuild Container。\n'
+              '如果重建失败，请打开 Codespaces: View Creation Log，将末尾错误发给维护人员。\n'
+              '不要删除Codespace或资料目录，也不需要手工安装Docker。', file=sys.stderr)
+        return False
+    if subprocess.run(['docker', 'compose', 'version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+        print('缺少Docker Compose插件，请重建开发容器并检查创建日志。', file=sys.stderr)
+        return False
+    return True
+
 def main():
+    if not check_docker():
+        raise SystemExit(2)
     data, config = prepare()
     (STATE/'ready').unlink(missing_ok=True)
     environment = {k:v for k,v in os.environ.items() if k not in config}

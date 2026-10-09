@@ -93,3 +93,15 @@ jobs:
         if: always()
       - run: docker compose down -v
         if: always()
+  devcontainer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            docker info
+            docker compose version
+            python scripts/test_codespaces.py

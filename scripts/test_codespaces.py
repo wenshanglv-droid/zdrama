@@ -21,4 +21,17 @@ class CodespacesConfigTests(unittest.TestCase):
             self.assertEqual(config['CSRF_TRUSTED_ORIGINS'], 'https://test-preview-8080.app.github.dev')
             self.assertNotEqual(first['admin_password'], first['recipient_password'])
 
+    def test_missing_docker_exits_before_changing_state(self):
+        with patch.object(startup.shutil, 'which', return_value=None), patch.object(startup, 'prepare') as prepare, patch.object(startup.subprocess, 'run') as run:
+            with self.assertRaises(SystemExit) as result:
+                startup.main()
+            self.assertEqual(result.exception.code, 2)
+            prepare.assert_not_called()
+            run.assert_not_called()
+
+    def test_missing_compose_is_reported(self):
+        from types import SimpleNamespace
+        with patch.object(startup.shutil, 'which', return_value='/usr/bin/docker'), patch.object(startup.subprocess, 'run', return_value=SimpleNamespace(returncode=1)):
+            self.assertFalse(startup.check_docker())
+
 if __name__ == '__main__': unittest.main()
