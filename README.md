@@ -2,6 +2,21 @@
 
 首个开发增量 v0.1。Vue 3 / TypeScript / Element Plus + Django REST Framework + PostgreSQL，Docker Compose 部署。
 
+## 在线体验（GitHub Codespaces）
+
+[打开网页试用环境](https://codespaces.new/wenshanglv-droid/zdrama/tree/feat/archive-foundation?quickstart=1)
+
+1. 确认分支为 `feat/archive-foundation`，点击 **Create codespace**。
+2. 等待首次构建完成，系统自动启动并准备3个虚构剧目、场次和PDF资料。
+3. 终端显示当前环境的随机登录密码；账号为 `demo_admin`。未看到时运行 `python .devcontainer/welcome.py`。
+4. 打开 **Ports / 端口 → 8080 → Open in Browser**，或使用自动打开的页面。
+
+分享体验：接收账号填写 `demo_guest`，退出管理账号后使用终端显示的接收账号密码登录。端口保持Private，体验资料仅限模拟或脱敏样本。
+
+首次创建由你在GitHub确认，使用账号的Codespaces额度；结束后在GitHub Codespaces页面停止环境。环境没有启动前，上面的链接是创建入口，不是已经运行的网站。
+
+自动启动失败可运行 `python .devcontainer/start.py` 重试。试用使用独立的 `zdrama-preview` Compose项目、数据卷和随机密钥；不覆盖正常开发的 `.env`，再次启动不重置账号和资料。
+
 ## 当前可用
 
 - Session 登录、CSRF 校验、内部/外部账号区分。

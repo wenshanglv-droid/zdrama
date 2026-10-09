@@ -113,3 +113,42 @@ class ArchiveTests(TestCase):
         self.client.force_login(self.other)
         self.assertEqual(self.client.post(f"/api/shares/{pk}/revoke/", {}).status_code, 404)
         self.assertIsNone(Share.objects.get(pk=pk).revoked_at)
+
+class DemoSeedTests(TestCase):
+    def test_explicit_enable_required(self):
+        import os
+        from unittest.mock import patch
+        from django.core.management import call_command, CommandError
+        with patch.dict(os.environ, {'ZDRAMA_DEMO':'0'}):
+            with self.assertRaises(CommandError):
+                call_command('seed_demo')
+
+    def test_seed_is_idempotent_and_pdf_is_available(self):
+        import io, json, os
+        from unittest.mock import patch
+        from django.core.management import call_command
+        credentials=json.dumps({'admin_password':'test-admin-random-password-123','recipient_password':'test-guest-random-password-456'})
+        with tempfile.TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=directory), patch.dict(os.environ, {'ZDRAMA_DEMO':'1'}):
+            for _ in range(2):
+                with patch('sys.stdin',io.StringIO(credentials)):
+                    call_command('seed_demo',stdout=io.StringIO())
+            self.assertEqual(Production.objects.count(),3)
+            self.assertEqual(Asset.objects.count(),3)
+            self.assertEqual(get_user_model().objects.count(),2)
+            self.assertTrue(get_user_model().objects.get(username='demo_admin').check_password('test-admin-random-password-123'))
+            client=APIClient();client.force_login(get_user_model().objects.get(username='demo_admin'))
+            response=client.get(f'/api/assets/{Asset.objects.first().pk}/preview/')
+            self.assertEqual(response.status_code,200)
+            self.assertTrue(b''.join(response.streaming_content).startswith(b'%PDF-'))
+
+    def test_existing_users_are_never_replaced(self):
+        import io, json, os
+        from unittest.mock import patch
+        from django.core.management import call_command, CommandError
+        existing=get_user_model().objects.create_user('existing',password='original-password')
+        data=json.dumps({'admin_password':'test-admin-random-password-123','recipient_password':'test-guest-random-password-456'})
+        with patch.dict(os.environ,{'ZDRAMA_DEMO':'1'}),patch('sys.stdin',io.StringIO(data)):
+            with self.assertRaises(CommandError): call_command('seed_demo')
+        existing.refresh_from_db()
+        self.assertTrue(existing.check_password('original-password'))
+        self.assertEqual(get_user_model().objects.count(),1)

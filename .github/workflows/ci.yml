@@ -82,7 +82,13 @@ jobs:
       - run: docker compose exec -T backend python manage.py check
       - run: docker compose exec -T backend python manage.py test archive
       - run: python scripts/container_smoke.py
+      - run: docker compose stop web
+      - run: python .devcontainer/start.py
+      - run: python .devcontainer/start.py
+      - run: docker compose --env-file .codespaces/demo.env -p zdrama-preview exec -T backend python manage.py check
       - run: docker compose logs --tail=100
         if: failure()
+      - run: docker compose --env-file .codespaces/demo.env -p zdrama-preview down -v
+        if: always()
       - run: docker compose down -v
         if: always()
