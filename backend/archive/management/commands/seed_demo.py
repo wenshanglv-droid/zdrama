@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from archive.models import Production, Performance, Asset
+from archive.models import Production, Performance, Asset, Edition, AssetVersion
 
 
 def pdf_bytes():
@@ -49,9 +49,12 @@ class Command(BaseCommand):
                 ('长街灯火（模拟）','话剧','城市剧场'),
                 ('山河回响（模拟）','音乐剧','艺术中心'),
                 ('春日来信（模拟）','儿童剧','小剧场')],1):
-                production=Production.objects.create(title=title,genre=genre,description='虚构演示档案，仅用于体验系统。')
-                event=Performance.objects.create(production=production,title='首演场（模拟）',starts_at=datetime(2026,10,index+10,19,30,tzinfo=ZoneInfo('Asia/Shanghai')),venue=venue,cast_notes='演示演员甲、演示演员乙')
+                production=Production.objects.create(title=title,genre=genre,description='虚构演示档案，仅用于体验系统。',created_by=admin)
+                edition=Edition.objects.create(production=production,name='首演版')
+                event=Performance.objects.create(production=production,edition=edition,title='首演场（模拟）',starts_at=datetime(2026,10,index+10,19,30,tzinfo=ZoneInfo('Asia/Shanghai')),venue=venue,cast_notes='演示演员甲、演示演员乙')
                 payload=pdf_bytes()
                 asset=Asset(title='排练剧本（模拟）',performance=event,category='剧本',owner=admin,original_name='演示剧本.pdf',size=len(payload),sha256=hashlib.sha256(payload).hexdigest())
                 asset.file.save('演示剧本.pdf',ContentFile(payload),save=True)
+                asset.current_version=AssetVersion.objects.create(asset=asset,number=1,file=asset.file.name,original_name=asset.original_name,size=asset.size,sha256=asset.sha256,uploaded_by=admin,note='首次上传')
+                asset.save(update_fields=['current_version'])
         self.stdout.write('已创建模拟剧目、场次、PDF资料和两个试用账号。')

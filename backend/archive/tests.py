@@ -17,7 +17,7 @@ class ArchiveTests(TestCase):
         self.other=User.objects.create_user("other",password="test-secret-123",is_staff=True)
         self.external=User.objects.create_user("external",password="test-secret-123")
         self.client=APIClient();self.client.force_login(self.owner)
-        self.p=Production.objects.create(title="试演剧目")
+        self.p=Production.objects.create(title="试演剧目",created_by=self.owner)
         self.event=Performance.objects.create(production=self.p,title="首演",starts_at=timezone.now(),venue="剧场")
         r=self.client.post("/api/assets/",{"title":"剧本","performance":self.event.pk,"category":"剧本","file":SimpleUploadedFile("script.pdf",b"%PDF-1.4 test")},format="multipart")
         self.assertEqual(r.status_code,201,r.data);self.asset=Asset.objects.get(pk=r.data["id"])
@@ -61,7 +61,7 @@ class ArchiveTests(TestCase):
         self.client.force_login(self.external)
         self.assertEqual(self.client.get(f"/api/shared/{token}/").status_code,404)
     def test_inflight_stream_stops_when_share_revoked(self):
-        self.asset.file.save("large.pdf",SimpleUploadedFile("large.pdf",b"%PDF-"+b"x"*200000))
+        self.asset.current_version.file.save("large.pdf",SimpleUploadedFile("large.pdf",b"%PDF-"+b"x"*200000))
         token,pk=self.new_share();self.client.force_login(self.external)
         response=self.client.get(f"/api/shared/{token}/content/");iterator=iter(response.streaming_content)
         self.assertEqual(len(next(iterator)),65536)
@@ -102,7 +102,7 @@ class ArchiveTests(TestCase):
         self.assertEqual(self.client.get(f"/api/shared/{token}/").status_code, 403)
 
     def test_fake_preview_extension_rejected(self):
-        self.asset.file.save("fake.pdf", SimpleUploadedFile("fake.pdf", b"<html><script>alert(1)</script>"))
+        self.asset.current_version.file.save("fake.pdf", SimpleUploadedFile("fake.pdf", b"<html><script>alert(1)</script>"))
         self.assertEqual(self.client.get(f"/api/assets/{self.asset.pk}/preview/").status_code, 415)
         token, _ = self.new_share()
         self.client.force_login(self.external)
