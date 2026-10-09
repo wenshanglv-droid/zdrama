@@ -19,7 +19,7 @@
 
 ### Codespaces提示找不到docker
 
-这表示当前开发容器未加载Docker组件，可能尚未应用配置或创建失败进入恢复模式。
+已在CI复现一个原因：基础镜像的Yarn软件源缺少签名公钥，导致Docker组件安装失败。项目使用npm，开发容器Dockerfile已移除未使用的Yarn源，继续保持APT签名校验。请更新配置后重建；仅重跑启动脚本无法安装缺失的Docker。
 
 1. 终端运行 `git pull --ff-only` 获取当前开发分支更新。
 2. 按 `Ctrl+Shift+P`，选择 **Codespaces: Rebuild Container**，等待重新构建。
