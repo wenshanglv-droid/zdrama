@@ -18,7 +18,9 @@ class CodespacesConfigTests(unittest.TestCase):
             self.assertEqual((startup.STATE/'access.json').stat().st_mode & 0o777, 0o600)
             self.assertEqual((startup.STATE/'demo.env').stat().st_mode & 0o777, 0o600)
             self.assertEqual(config['DJANGO_DEBUG'], '0')
-            self.assertEqual(config['CSRF_TRUSTED_ORIGINS'], 'https://test-preview-8080.app.github.dev')
+            self.assertIn('https://test-preview-8080.app.github.dev', config['CSRF_TRUSTED_ORIGINS'].split(','))
+            self.assertIn('http://localhost:8080', config['CSRF_TRUSTED_ORIGINS'].split(','))
+            self.assertNotIn('*', config['CSRF_TRUSTED_ORIGINS'])
             self.assertNotEqual(first['admin_password'], first['recipient_password'])
 
     def test_missing_docker_exits_before_changing_state(self):

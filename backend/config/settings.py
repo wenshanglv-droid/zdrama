@@ -32,3 +32,5 @@ if os.getenv("REDIS_URL"):
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": os.environ["REDIS_URL"]}}
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
 CELERY_TASK_IGNORE_RESULT = True
+
+CSRF_FAILURE_VIEW = "archive.views.csrf_failure"

@@ -20,7 +20,7 @@ async function load(){
 }
 async function initialize(){user.value=(await api('session/')).user;if(user.value)await load()}
 onMounted(()=>run(async()=>{try{await initialize()}finally{ready.value=true}}))
-function login(){run(async()=>{await api('login/',credentials.value);credentials.value.password='';await initialize()})}
+function login(){run(async()=>{await api('session/');await api('login/',credentials.value);credentials.value.password='';await initialize()})}
 function logout(){run(async()=>{await api('logout/',{});user.value=null;shared.value=null;assets.value=[];await api('session/')})}
 function openShare(row:any){share.value={asset:row.id,recipient_username:'',expires_at:new Date(Date.now()+7*86400000).toISOString(),allow_download:false};link.value='';dialog.value='share'}
 function save(){run(async()=>{

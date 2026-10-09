@@ -152,3 +152,37 @@ class DemoSeedTests(TestCase):
         existing.refresh_from_db()
         self.assertTrue(existing.check_password('original-password'))
         self.assertEqual(get_user_model().objects.count(),1)
+
+class ProxyLoginTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        get_user_model().objects.create_user('proxy-user',password='test-proxy-password-123',is_staff=True)
+
+    @override_settings(ALLOWED_HOSTS=['preview-8080.app.github.dev'], CSRF_TRUSTED_ORIGINS=['https://preview-8080.app.github.dev'])
+    def test_rewritten_origin_reproduces_403(self):
+        client=APIClient(enforce_csrf_checks=True)
+        token=client.get('/api/session/',HTTP_HOST='preview-8080.app.github.dev').data['csrfToken']
+        response=client.post('/api/login/', {'username':'proxy-user','password':'test-proxy-password-123'}, HTTP_HOST='preview-8080.app.github.dev',HTTP_ORIGIN='http://localhost:8080',HTTP_X_CSRFTOKEN=token)
+        self.assertEqual(response.status_code,403)
+        self.assertEqual(response.json()['code'],'csrf_origin')
+
+    @override_settings(ALLOWED_HOSTS=['preview-8080.app.github.dev'], CSRF_TRUSTED_ORIGINS=['https://preview-8080.app.github.dev','http://localhost:8080'])
+    def test_explicit_proxy_origin_works_with_valid_token_only(self):
+        client=APIClient(enforce_csrf_checks=True)
+        response=client.get('/api/session/',HTTP_HOST='preview-8080.app.github.dev')
+        self.assertIn('no-store',response['Cache-Control'])
+        token=response.data['csrfToken']
+        kwargs={'HTTP_HOST':'preview-8080.app.github.dev','HTTP_ORIGIN':'http://localhost:8080'}
+        data={'username':'proxy-user','password':'test-proxy-password-123'}
+        self.assertEqual(client.post('/api/login/', data,**kwargs).status_code,403)
+        self.assertEqual(client.post('/api/login/', data,HTTP_X_CSRFTOKEN=token,**kwargs).status_code,200)
+
+    @override_settings(CSRF_TRUSTED_ORIGINS=['http://localhost:8080'])
+    def test_untrusted_origins_remain_blocked(self):
+        client=APIClient(enforce_csrf_checks=True)
+        token=client.get('/api/session/').data['csrfToken']
+        for origin in ['https://untrusted.example','http://localhost:9090','https://other-8080.app.github.dev']:
+            response=client.post('/api/login/', {'username':'proxy-user','password':'test-proxy-password-123'}, HTTP_ORIGIN=origin,HTTP_X_CSRFTOKEN=token)
+            self.assertEqual(response.status_code,403)
+            self.assertEqual(response.json()['code'],'csrf_origin')

@@ -29,7 +29,9 @@ def prepare():
         'DJANGO_SECRET_KEY': data['secret_key'], 'DB_PASSWORD': data['db_password'],
         'RABBIT_PASSWORD': data['queue_password'], 'DJANGO_DEBUG': '0' if name else '1',
         'DJANGO_ALLOWED_HOSTS': f'localhost,127.0.0.1,{hostname}',
-        'CSRF_TRUSTED_ORIGINS': data['url']
+        # Codespaces may rewrite Origin to the forwarded loopback port.
+        # Keep this exception local to this private preview, never wildcard origins.
+        'CSRF_TRUSTED_ORIGINS': ','.join([data['url']] + (['http://localhost:8080', 'https://localhost:8080', 'http://127.0.0.1:8080', 'https://127.0.0.1:8080'] if name else []))
     }
     envfile = STATE / 'demo.env'
     with open(envfile, 'w', opener=lambda p, f: os.open(p, f, 0o600)) as stream:

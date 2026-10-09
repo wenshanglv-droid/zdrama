@@ -27,6 +27,12 @@
 4. 启动脚本会自动运行；需要重试时执行 `python .devcontainer/start.py`。
 5. 如果重建失败，选择 **Codespaces: View Creation Log**，查看末尾错误。请勿删除Codespace或资料目录。
 
+### Codespaces登录出现403
+
+更新后运行 `python .devcontainer/start.py` 即可重新生成当前网址的配置并更新应用，不需要重建整个Codespace。请用 `python .devcontainer/welcome.py` 显示的网址在独立浏览器标签页访问，强制刷新后登录。
+
+试用环境明确允许当前外部网址和固定8080端口的loopback来源，以兼容端口代理重写Origin；CSRF令牌校验仍保留，不使用通配来源。后端会区分来源不匹配、缺少Cookie和过期令牌，显示对应中文提示。模拟代理请求的回归测试覆盖有效登录、缺少令牌和非信任来源拦截。
+
 ## 当前可用
 
 - Session 登录、CSRF 校验、内部/外部账号区分。

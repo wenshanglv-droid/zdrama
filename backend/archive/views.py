@@ -3,7 +3,7 @@ import secrets
 from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -18,6 +18,19 @@ from rest_framework.throttling import AnonRateThrottle
 from .models import Production, Performance, Asset, Share, Audit
 from .serializers import ProductionSerializer, PerformanceSerializer, AssetSerializer, ShareSerializer
 
+def csrf_failure(request, reason=""):
+    if reason.startswith("Origin checking failed"):
+        code, detail = "csrf_origin", "登录来源校验失败，请更新并重启试用服务，使用welcome.py显示的网址访问。"
+    elif "CSRF cookie not set" in reason:
+        code, detail = "csrf_cookie", "浏览器未发送验证Cookie，请在独立浏览器标签页打开HTTPS试用网址，允许站点Cookie后刷新。"
+    elif reason.startswith("Referer checking failed"):
+        code, detail = "csrf_referer", "请求来源验证失败，请在独立浏览器标签页打开试用网址后刷新。"
+    else:
+        code, detail = "csrf_token", "页面验证信息已失效，请刷新页面后重新登录。"
+    response = JsonResponse({"code": code, "detail": detail}, status=403)
+    response["Cache-Control"] = "no-store"
+    return response
+
 class Internal(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(request.user.is_authenticated and request.user.is_staff)
@@ -25,7 +38,9 @@ class Internal(permissions.BasePermission):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def session(request):
-    return Response({"csrfToken": get_token(request), "user": {"username": request.user.username, "internal": request.user.is_staff} if request.user.is_authenticated else None})
+    response = Response({"csrfToken": get_token(request), "user": {"username": request.user.username, "internal": request.user.is_staff} if request.user.is_authenticated else None})
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 class LoginThrottle(AnonRateThrottle):
     scope = "login"
